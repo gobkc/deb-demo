@@ -1,0 +1,18 @@
+#!/bin/bash
+
+# 列出并选择当前命名空间
+NAMESPACE=$(kubectl get namespaces --no-headers | awk '{print $1}' | peco --prompt "Please select current namespace: ")
+
+# 列出当前命名空间对应的 Pod，并选择一个
+POD=$(kubectl get pods --namespace "$NAMESPACE" --no-headers | awk '{print $1}' | peco --prompt "Please select current pod in namespace: ")
+
+# 使用 peco 交互式输入当前 Pod 对应的端口
+PORT=$(kubectl get pods --namespace "$NAMESPACE" "$POD" --output='jsonpath={.spec.containers[*].ports[*].containerPort}' | tr -s " " "\n" | peco --prompt "Please select the port to forward: ")
+
+# 使用 fzy 交互式输入当前 Pod 对应的端口
+INPUT_PORT=$(kubectl get pods --namespace "$NAMESPACE" "$POD" --output='jsonpath={.spec.containers[*].ports[*].containerPort}' | tr -s " " "\n" | grep "$PORT" | fzy --prompt "Please enter the port to forward (fuzzy search): ")
+
+# 执行 kubectl port-forward 操作
+echo "Forwarding port $INPUT_PORT of pod $POD in namespace $NAMESPACE to local port $PORT."
+kubectl port-forward "$POD" $INPUT_PORT:$PORT --namespace "$NAMESPACE"
+

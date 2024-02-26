@@ -1,0 +1,14 @@
+#!/bin/bash
+
+# 列出并选择当前命名空间
+NAMESPACE=$(kubectl get namespaces --no-headers | awk '{print $1}' | peco --prompt "Please select current namespace: ")
+
+# 列出当前命名空间对应的 Pod，并选择一个
+POD=$(kubectl get pods --namespace "$NAMESPACE" --no-headers | awk '{print $1}' | peco --prompt "Please select current pod in namespace: ")
+
+# 选择要执行的命令
+COMMAND=$(echo -e "bash\nsh\npsql" | peco --prompt "Please select the command to run: ")
+
+# 执行 kubectl exec 操作
+kubectl exec -ti "$POD" --namespace "$NAMESPACE" "$COMMAND"
+

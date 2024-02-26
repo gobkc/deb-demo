@@ -1,0 +1,10 @@
+Package: devscript
+Version: 1.0
+Section: utils
+Priority: optional
+Architecture: all
+Depends: bash
+Maintainer: XiongGe
+Description: a dev script
+
+
