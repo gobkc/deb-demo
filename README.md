@@ -35,3 +35,9 @@ Description: app description
 ````
 
 4. Add the script you want to package to usr/bin
+
+5. Execute the packaging command
+
+````
+dpkg-deb --build your-app-package-name
+````
