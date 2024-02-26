@@ -1,0 +1,12 @@
+#!/bin/bash
+
+# 列出并选择当前命名空间
+NAMESPACE=$(kubectl get namespaces --no-headers | awk '{print $1}' | peco --prompt "Please select current namespace: ")
+
+# 列出当前命名空间对应的 Pod，并选择一个
+POD=$(kubectl get pods --namespace "$NAMESPACE" --no-headers | awk '{print $1}' | peco --prompt "Please select current pod in namespace: ")
+
+# 执行 kubectl delete pod 操作
+echo "kubectl delete pod $POD --namespace $NAMESPACE"
+kubectl delete pod "$POD" --namespace "$NAMESPACE"
+
