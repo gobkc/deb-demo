@@ -1,0 +1,30 @@
+#!/bin/bash
+
+# 列出并选择当前命名空间
+NAMESPACE=$(kubectl get namespaces --no-headers | awk '{print $1}' | peco --prompt "Please select current namespace: ")
+
+# 列出当前命名空间对应的 Pod，并选择一个
+POD=$(kubectl get pods --namespace "$NAMESPACE" --no-headers | awk '{print $1}' | peco --prompt "Please select current pod in namespace: ")
+
+EXPORT_FILE=$(echo "${POD}-$(date +"%Y%m%d%H%M%S").log"|fzy --prompt "Please enter the log file name: ")
+
+# 执行 kubectl logs -f 操作
+kubectl logs "$POD" --namespace "$NAMESPACE" > "$EXPORT_FILE"
+
+SELECT=$(echo -e "1.gedit log\n2.tail -f log\n3.quit"|peco --prompt "[${EXPORT_FILE}]maybe you want to do:")
+case $SELECT in
+    "1.gedit log")
+        gedit "$EXPORT_FILE"
+        exit 0
+        ;;
+    "2.tail -f log")
+        tail -f "$EXPORT_FILE"
+        ;;
+    "3.quit")
+        echo "Exiting..."
+        exit 0
+        ;;
+    *)
+        echo "Invalid option $REPLY"
+        ;;
+esac

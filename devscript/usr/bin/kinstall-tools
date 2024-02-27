@@ -1,0 +1,16 @@
+#!/bin/bash
+
+SELECT=$(echo -e "1.install tools\n2.quit"|peco --prompt "[dev-script]maybe you want to do:")
+case $SELECT in
+    "1.install tools")
+        sudo apt install -y peco fzy sshpass sshfs
+        exit 0
+        ;;
+    "2.quit")
+        echo "Exiting..."
+        exit 0
+        ;;
+    *)
+        echo "Invalid option $REPLY"
+        ;;
+esac
