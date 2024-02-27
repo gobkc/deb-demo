@@ -1,0 +1,23 @@
+#!/bin/bash
+
+selected_shell=$(ls -1 *.sh 2> /dev/null | peco --prompt "Step 1: Select shell file for 'Exec=' option")
+selected_icon=$(ls -1 *.png *.svg *.icon *.jpg 2> /dev/null | peco --prompt "Step 2: Select image file for 'Icon=' option")
+
+shell_filename=$(basename "$selected_shell")
+desktop_filename="${shell_filename%.*}.desktop"
+upper_name="$(tr '[:lower:]' '[:upper:]' <<< ${shell_filename:0:1})${shell_filename:1}"
+
+cat <<EOF > "$desktop_filename"
+[Desktop Entry]
+Type=Application
+Name=${upper_name%.*}
+Exec=bash -c "$(pwd)/$selected_shell"
+Icon="$(pwd)/$selected_icon"
+Terminal=false
+EOF
+
+sudo cp "$desktop_filename" /usr/share/applications/
+sudo chmod a+w+r "/usr/share/applications/$desktop_filename"
+
+echo "Shortcut created successfully:/usr/share/applications/$desktop_filename"
+cat "/usr/share/applications/$desktop_filename"
