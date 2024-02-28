@@ -1,12 +1,54 @@
 #!/bin/bash
 
-SELECT=$(echo -e "1.install tools\n2.quit"|peco --prompt "[dev-script]maybe you want to do:")
+GOPATH="${HOME}/gopath"
+GOROOT="/opt/go"
+GOPROXY="goproxy.cn"
+
+SELECT=$(echo -e "1.install tools\n2.install golang\n3.install rust\n4.quit"|peco --prompt "[dev-script]maybe you want to do:")
 case $SELECT in
     "1.install tools")
-        sudo apt install -y peco fzy sshpass sshfs
+        sudo apt install -y peco fzy sshpass sshfs curl tr wget
         exit 0
         ;;
-    "2.quit")
+    "2.install golang")
+        version=$(curl -s https://go.dev/dl/?mode=json|grep -m 1 linux-amd64|awk '{print $2}'|tr -d '":,')
+        golang="https://dl.google.com/go/${version}"
+        echo "golang latest version:${version}, download link:${golang}"
+        gotar="$(ls /opt/$version 2>>/dev/null)"
+        sudo rm -rf "/opt/go"
+        if [ -z "$gotar" ]; then
+            sudo curl -o "/opt/${version}" "${golang}"
+        fi
+        sudo chmod 777 "/opt/${version}"
+        sudo tar -xvf "/opt/${version}" -C "/opt/"
+#        sudo rm -rf /opt/go*.tar.gz
+        sudo chmod 777 "/opt/go"
+
+        # rewrite golang envs
+        sudo rm -rf "$HOME/.go.env"
+        echo "export GOPATH=\"$GOPATH\"" > "$HOME/.go.env"
+        echo "export GOROOT=\"$GOROOT\"" >> "$HOME/.go.env"
+        echo "export GOPROXY=\"$GOPROXY\"" >> "$HOME/.go.env"
+        echo "PATH=\$GOROOT/bin:\$GOPATH/bin:\$PATH" >> "$HOME/.go.env"
+
+        # Add reference to ~/.go.env in ~/.bashrc and /etc/profile if not already present
+        if ! grep -q 'source "$HOME/.go.env"' "$HOME/.bashrc"; then
+            echo 'source "$HOME/.go.env"' >> "$HOME/.bashrc"
+        fi
+
+        if ! grep -q 'source "$HOME/.go.env"' "/etc/profile"; then
+            sudo echo 'source "$HOME/.go.env"' | sudo tee -a "/etc/profile"
+        fi
+
+        # Source ~/.go.env to apply changes immediately
+        source "$HOME/.go.env"
+        exit 0
+        ;;
+    "3.install rust")
+        echo "Exiting..."
+        exit 0
+        ;;
+    "4.quit")
         echo "Exiting..."
         exit 0
         ;;
