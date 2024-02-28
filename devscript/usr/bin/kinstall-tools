@@ -4,13 +4,27 @@ GOPATH="${HOME}/gopath"
 GOROOT="/opt/go"
 GOPROXY="goproxy.cn"
 
-SELECT=$(echo -e "1.install tools\n2.install golang\n3.install rust\n4.quit"|peco --prompt "[dev-script]maybe you want to do:")
+# check or install function
+check_and_install() {
+    command -v $1 >/dev/null 2>&1 || {
+        echo "$1 is not installed, using APT for installation"
+        sudo apt update
+        sudo apt install -y $1
+    }
+}
+
+# check and install command
+check_and_install peco
+check_and_install fzy
+check_and_install sshpass
+check_and_install sshfs
+check_and_install curl
+check_and_install tr
+check_and_install wget
+
+SELECT=$(echo -e "1.install golang\n2.install rust\n3.quit"|peco --prompt "[dev-script]maybe you want to do:")
 case $SELECT in
-    "1.install tools")
-        sudo apt install -y peco fzy sshpass sshfs curl tr wget
-        exit 0
-        ;;
-    "2.install golang")
+    "1.install golang")
         version=$(curl -s https://go.dev/dl/?mode=json|grep -m 1 linux-amd64|awk '{print $2}'|tr -d '":,')
         golang="https://dl.google.com/go/${version}"
         echo "golang latest version:${version}, download link:${golang}"
@@ -44,11 +58,24 @@ case $SELECT in
         source "$HOME/.go.env"
         exit 0
         ;;
-    "3.install rust")
-        echo "Exiting..."
+    "2.install rust")
+        echo "rust installing..."
+        # rewrite rust envs
+        sudo rm -rf "$HOME/.rust.env"
+        echo "export RUSTUP_DIST_SERVER=https://mirrors.ustc.edu.cn/rust-static" > "$HOME/.rust.env"
+        echo "export RUSTUP_UPDATE_ROOT=https://mirrors.ustc.edu.cn/rust-static/rustup" >> "$HOME/.rust.env"
+        echo ". \"\$HOME/.cargo/env\"" >> "$HOME/.rust.env"
+        if ! grep -q 'source "$HOME/.rust.env"' "$HOME/.bashrc"; then
+            echo 'source "$HOME/.rust.env"' >> "$HOME/.bashrc"
+        fi
+        if ! grep -q 'source "$HOME/.rust.env"' "/etc/profile"; then
+            sudo echo 'source "$HOME/.rust.env"' | sudo tee -a "/etc/profile"
+        fi
+
+        RUSTUP_DIST_SERVER=https://mirrors.ustc.edu.cn/rust-static RUSTUP_UPDATE_ROOT=https://mirrors.ustc.edu.cn/rust-static/rustup curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
         exit 0
         ;;
-    "4.quit")
+    "3.quit")
         echo "Exiting..."
         exit 0
         ;;
