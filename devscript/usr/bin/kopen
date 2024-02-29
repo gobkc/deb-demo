@@ -57,7 +57,7 @@ case $SELECT in
         # execute v2ray
         exits_v2ray="$(pgrep v2ray)"
         if [ -n "$exits_v2ray" ]; then
-          kill -9 $(pgrep v2ray)
+          sudo kill -9 $(pgrep v2ray)
         fi
         /opt/v2ray/v2ray run -c $HOME/.v2ray.json > /dev/null 2>&1 &
         echo "Open v2ray service success,1.http://127.0.0.1:8889/ 2.socks://127.0.0.1:1089/"
@@ -65,7 +65,7 @@ case $SELECT in
         ;;
     "4.clear proxy")
         echo "Clearing..."
-        kill -9 $(pgrep v2ray) > /dev/null 2>&1 &
+        sudo kill -9 $(pgrep v2ray) > /dev/null 2>&1 &
         echo "" > "$HOME/.v2ray.env"
         gsettings set org.gnome.system.proxy mode 'none'
         git config --global --unset http.proxy
