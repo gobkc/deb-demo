@@ -51,6 +51,8 @@ case $SELECT in
         gsettings set org.gnome.system.proxy.socks port 1089
         gsettings set org.gnome.system.proxy ignore-hosts "['localhost', '127.0.0.0/8', '::1', 'sso-dev', 'gobk.cn']"
 #        systemctl restart systemd-networkd
+        git config --global http.proxy http://127.0.0.1:1089
+        git config --global https.proxy http://127.0.0.1:1089
 
         # execute v2ray
         exits_v2ray="$(pgrep v2ray)"
@@ -66,6 +68,8 @@ case $SELECT in
         kill -9 $(pgrep v2ray) > /dev/null 2>&1 &
         echo "" > "$HOME/.v2ray.env"
         gsettings set org.gnome.system.proxy mode 'none'
+        git config --global --unset http.proxy
+        git config --global --unset https.proxy
         exit 0
         ;;
     "5.quit")
