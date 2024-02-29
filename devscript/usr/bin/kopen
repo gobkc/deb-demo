@@ -1,0 +1,78 @@
+#!/bin/bash
+
+check_and_install() {
+    v2ray="$(ls /opt/v2ray/v2ray 2>>/dev/null)"
+    download_v2ray="https://github.com/v2fly/v2ray-core/releases/download/v5.12.1/v2ray-linux-64.zip"
+    if [ -z "$v2ray" ]; then
+        sudo rm -rf /opt/v2ray-linux-64.zip
+        sudo curl -L -o "/opt/v2ray-linux-64.zip" "${download_v2ray}"
+        sudo unzip /opt/v2ray-linux-64.zip -d /opt/v2ray
+    fi
+}
+
+SELECT=$(echo -e "1.open minikube\n2.open configurator\n3.open v2ray\n4.clear proxy\n5.quit"|peco --prompt "[open services]maybe you want to do:")
+case $SELECT in
+    "1.open minikube")
+        minikube stop
+        minikube start --extra-config=apiserver.service-node-port-range=4000-40000
+        exit 0
+        ;;
+    "2.open configurator")
+        echo "open configurator..."
+        exit 0
+        ;;
+    "3.open v2ray")
+        echo "Check v2ray..."
+        check_and_install
+        if [ ! -f "$HOME/.v2ray.json" ]; then
+          echo ".v2ray.json is empty,please generate $HOME/.v2ray.json"
+          exit 0
+        fi
+        # rewrite envs
+        if ! grep -q 'source "$HOME/.v2ray.env"' "$HOME/.bashrc"; then
+            echo 'source "$HOME/.v2ray.env"' >> "$HOME/.bashrc"
+        fi
+        rm -rf "$HOME/.v2ray.env"
+        echo "export all_proxy=http://127.0.0.1:8889/" > "$HOME/.v2ray.env"
+        echo "export https_proxy=http://127.0.0.1:8889/" >> "$HOME/.v2ray.env"
+        echo "export http_proxy=http://127.0.0.1:8889/" >> "$HOME/.v2ray.env"
+        echo "export ftp_proxy=http://127.0.0.1:8889/" >> "$HOME/.v2ray.env"
+        echo "export socks_proxy=socks://127.0.0.1:1089/" >> "$HOME/.v2ray.env"
+
+        gsettings set org.gnome.system.proxy mode 'none'
+        gsettings set org.gnome.system.proxy mode 'manual'
+        gsettings set org.gnome.system.proxy.http host '127.0.0.1'
+        gsettings set org.gnome.system.proxy.http port 8889
+        gsettings set org.gnome.system.proxy.https host '127.0.0.1'
+        gsettings set org.gnome.system.proxy.https port 8889
+        gsettings set org.gnome.system.proxy.ftp host '127.0.0.1'
+        gsettings set org.gnome.system.proxy.ftp port 8889
+        gsettings set org.gnome.system.proxy.socks host '127.0.0.1'
+        gsettings set org.gnome.system.proxy.socks port 1089
+        gsettings set org.gnome.system.proxy ignore-hosts "['localhost', '127.0.0.0/8', '::1', 'sso-dev', 'gobk.cn']"
+#        systemctl restart systemd-networkd
+
+        # execute v2ray
+        exits_v2ray="$(pgrep v2ray)"
+        if [ -n "$exits_v2ray" ]; then
+          kill -9 $(pgrep v2ray)
+        fi
+        /opt/v2ray/v2ray run -c $HOME/.v2ray.json > /dev/null 2>&1 &
+        echo "Open v2ray service success,1.http://127.0.0.1:8889/ 2.socks://127.0.0.1:1089/"
+        exit 0
+        ;;
+    "4.clear proxy")
+        echo "Clearing..."
+        kill -9 $(pgrep v2ray) > /dev/null 2>&1 &
+        echo "" > "$HOME/.v2ray.env"
+        gsettings set org.gnome.system.proxy mode 'none'
+        exit 0
+        ;;
+    "5.quit")
+        echo "Exiting..."
+        exit 0
+        ;;
+    *)
+        echo "Invalid option $REPLY"
+        ;;
+esac

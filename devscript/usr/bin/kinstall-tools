@@ -21,6 +21,7 @@ check_and_install sshfs
 check_and_install curl
 check_and_install tr
 check_and_install wget
+check_and_install unzip
 
 SELECT=$(echo -e "1.install golang\n2.install rust\n3.quit"|peco --prompt "[dev-script]maybe you want to do:")
 case $SELECT in
@@ -31,7 +32,7 @@ case $SELECT in
         gotar="$(ls /opt/$version 2>>/dev/null)"
         sudo rm -rf "/opt/go"
         if [ -z "$gotar" ]; then
-            sudo curl -o "/opt/${version}" "${golang}"
+            sudo curl -L -o "/opt/${version}" "${golang}"
         fi
         sudo chmod 777 "/opt/${version}"
         sudo tar -xvf "/opt/${version}" -C "/opt/"
