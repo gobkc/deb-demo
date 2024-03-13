@@ -22,6 +22,7 @@ check_and_install curl
 check_and_install tr
 check_and_install wget
 check_and_install unzip
+check_and_install ffmpeg
 
 SELECT=$(echo -e "1.install golang\n2.install rust\n3.quit"|peco --prompt "[dev-script]maybe you want to do:")
 case $SELECT in

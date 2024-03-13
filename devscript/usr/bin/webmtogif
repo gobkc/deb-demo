@@ -1,0 +1,11 @@
+#!/bin/bash
+
+selected_webm=$(ls -1 *.webm *.mp4 *.aiv *.mpeg 2> /dev/null | peco --prompt "Step 1: Select webm video file")
+if [ -z "$selected_webm" ]; then
+    echo "CANCEL SELECTED webm VIDEO FILE, Exiting..."
+    exit 0
+fi
+
+gif_file=$(echo "${selected_webm}$(date +"%H%M%S").gif"|fzy --prompt "Please enter the gif file name: ")
+
+ffmpeg -i ${selected_webm} ${gif_file}
