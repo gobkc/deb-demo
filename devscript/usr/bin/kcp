@@ -1,0 +1,39 @@
+#!/bin/bash
+
+# 选择SQL文件
+SQL=$(ls -1 *.sql 2> /dev/null | peco --prompt "Step 1: Select sql file")
+
+echo -e "SELECT SQL FILE:${SQL}\n"
+
+# 列出并选择当前命名空间
+NAMESPACE=$(kubectl get namespaces --no-headers | awk '{print $1}' | peco --prompt "Step 2: Please select current namespace: ")
+
+echo -e "SELECT NAMESPACE:${NAMESPACE}\n"
+
+# 列出当前命名空间对应的 Pod，并选择一个
+POD=$(kubectl get pods --namespace "$NAMESPACE" --no-headers | awk '{print $1}' | peco --prompt "Step 3: Please select current pod in namespace: ")
+
+echo -e "SELECT POD:${POD}\n"
+
+# 选择要数据库名称
+DB=$(echo -e "configurator\nprofile\nac\nsso" | peco --prompt "Step 4: Please select db")
+
+echo -e "SELECT DB:${DB}\n"
+
+# 执行 kubectl cp 操作
+kubectl cp "${SQL}" "${POD}":"pgdata/${SQL}" --namespace "${NAMESPACE}"
+
+SELECT=$(echo -e "1.execute sql file\n2.quit"|peco --prompt "[${EXPORT_FILE}]maybe you want to do:")
+case $SELECT in
+    "1.execute sql file")
+kubectl exec -it "${POD}"   -n "${NAMESPACE}" -- bash -c "psql -d ${DB} -f /pgdata/${SQL}"
+        exit 0
+        ;;
+    "2.quit")
+        echo "Exiting..."
+        exit 0
+        ;;
+    *)
+        echo "Invalid option $REPLY"
+        ;;
+esac
