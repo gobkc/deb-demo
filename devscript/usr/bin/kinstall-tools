@@ -24,7 +24,7 @@ check_and_install wget
 check_and_install unzip
 check_and_install ffmpeg
 
-SELECT=$(echo -e "1.install golang\n2.install rust\n3.quit"|peco --prompt "[dev-script]maybe you want to do:")
+SELECT=$(echo -e "1.install golang\n2.install rust\n3.envs setting\n4.quit"|peco --prompt "[dev-script]maybe you want to do:")
 case $SELECT in
     "1.install golang")
         version=$(curl -s https://go.dev/dl/?mode=json|grep -m 1 linux-amd64|awk '{print $2}'|tr -d '":,')
@@ -77,7 +77,16 @@ case $SELECT in
         RUSTUP_DIST_SERVER=https://mirrors.ustc.edu.cn/rust-static RUSTUP_UPDATE_ROOT=https://mirrors.ustc.edu.cn/rust-static/rustup curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
         exit 0
         ;;
-    "3.quit")
+    "3.envs setting")
+        echo "Setting..."
+        if [ -f "$HOME/.bash_aliases" ]; then
+            echo "$HOME/.bash_aliases already exists. No action needed."
+        else
+            echo -e "alias k=kubectl\nalias gedit=gnome-text-editor\n" > "$HOME/.bash_aliases"
+        fi
+        exit 0
+        ;;
+    "4.quit")
         echo "Exiting..."
         exit 0
         ;;
