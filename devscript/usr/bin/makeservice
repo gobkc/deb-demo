@@ -1,0 +1,83 @@
+#!/bin/bash
+
+# Ensure peco and fzy are installed
+if ! command -v peco &> /dev/null || ! command -v fzy &> /dev/null; then
+  echo "This script requires 'peco' and 'fzy' to be installed."
+  exit 1
+fi
+
+# Step 1: Select shell file
+selected_shell=$(ls -1 * 2> /dev/null | peco --prompt "Step 1: Select shell file:")
+if [ -z "$selected_shell" ]; then
+  echo "No shell file selected."
+  exit 1
+fi
+
+default_service_name="${selected_shell%.sh}"
+
+# Step 2: Enter the service name
+echo "Step 2: Please enter the service name [default: $default_service_name]:"
+read -r service_name
+service_name=${service_name:-$default_service_name}
+
+# Create service unit file content
+service_file_content=$(cat <<EOF
+[Unit]
+Description=$service_name
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=$(pwd)/$selected_shell
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+EOF
+)
+
+# Save service file
+service_file_path="/etc/systemd/system/${service_name}.service"
+echo "$service_file_content" | sudo tee "$service_file_path" > /dev/null
+
+# Set appropriate permissions
+sudo chmod 644 "$service_file_path"
+
+# Output result and contents of the service file
+echo "Service file has been generated: $service_file_path"
+cat "$service_file_path"
+
+# Prompt user to enable and start the service
+read -p "Do you want to enable and start the service now? (Y/N) default:N " answer
+answer=${answer:-N}
+if [[ "$answer" =~ ^[Yy]$ ]]; then
+  sudo systemctl enable "$service_name"
+  sudo systemctl start "$service_name"
+  sudo systemctl status "$service_name"
+fi
+
+#
+##!/bin/bash
+#
+#selected_shell=$(ls -1 * 2> /dev/null | peco --prompt "Step 1: Select shell file:")
+#service_name=$(echo ""|fzy --prompt "Step 2: Please enter the service name:")
+#
+#cat <<EOF > "$service_name"".service"
+#[Unit]
+#Description="$service_name"
+#After=network.target
+#
+#[Service]
+#Type=simple
+#ExecStart=$(pwd)/$selected_shell
+#Restart=on-failure
+#
+#[Install]
+#WantedBy=multi-user.target
+#EOF
+#
+#sudo mv "$service_name"".service" /etc/systemd/system/
+#sudo chmod 777 /etc/systemd/system/${service_name}.service
+#
+#echo "service file is generated:/etc/systemd/system/${service_name}.service"
+#cat "/etc/systemd/system/${service_name}.service"
