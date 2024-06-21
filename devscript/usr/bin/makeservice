@@ -15,21 +15,30 @@ fi
 
 default_service_name="${selected_shell%.sh}"
 
-# Step 2: Enter the service name
-echo "Step 2: Please enter the service name [default: $default_service_name]:"
+# Step 2: Choose which service to start after
+after=$(echo -e "basic.target\nnetwork.target\nnetwork-online.target\nsysinit.target"|fzy --prompt "Please choose which service to start after [default: basic.target]:")
+after=${after:-basic.target}
+
+# Step 3: Enter the service name
+echo "Step 3: Please enter the service name [default: $default_service_name]:"
 read -r service_name
 service_name=${service_name:-$default_service_name}
+
+# Step 4: Enter the command parameter
+echo "Step 4: Please enter the command parameter [default: ]:"
+read -r parameter
 
 # Create service unit file content
 service_file_content=$(cat <<EOF
 [Unit]
 Description=$service_name
-After=network.target
+After=$after
 
 [Service]
 Type=simple
-ExecStart=$(pwd)/$selected_shell
+ExecStart=$(pwd)/$selected_shell ${parameter}
 Restart=on-failure
+Environment="HOME=$HOME"
 
 [Install]
 WantedBy=multi-user.target
