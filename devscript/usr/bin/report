@@ -1,0 +1,56 @@
+#!/bin/bash
+
+# 找到 CHANGELOG 文件
+if [ -f "CHANGELOG.md" ]; then
+    changelog_file="CHANGELOG.md"
+elif [ -f "changelog.md" ]; then
+    changelog_file="changelog.md"
+else
+    echo "未找到 CHANGELOG 文件。"
+    exit 1
+fi
+
+# 提取版本列表
+versions=$(grep -E '^### v[0-9]+\.[0-9]+\.[0-9]+' "$changelog_file" | awk '{print $2}')
+
+# 提示用户选择版本
+echo "请选择要提取的版本："
+selected_version=$(echo "$versions" | peco --prompt "Version> " --initial-index=0)
+
+# 提取选中版本下的内容，处理到下一个版本号或文件结尾
+version_content=$(sed -n "/^### $selected_version$/,/^### v[0-9]\+\.[0-9]\+\.[0-9]\+$/p" "$changelog_file" | sed '1d;$d')
+
+# 如果到文件末尾没有匹配到下一个版本号
+if [ -z "$version_content" ]; then
+    version_content=$(sed -n "/^### $selected_version$/,\$p" "$changelog_file" | sed '1d')
+fi
+
+# 仅提取以 `-` 开头的行
+mapfile -t items <<< "$(echo "$version_content" | grep -E '^\s*-\s+')"
+
+# 格式化内容
+formatted_content=""
+for i in "${!items[@]}"; do
+    formatted_content+="$((i+1)). ${items[$i]:2}\n"
+done
+
+# 定义项目列表
+projects="configurator-be\nconfigurator-be-v2\nprofile-be\nelevate-be"
+
+# 提示用户选择项目
+echo "请选择项目："
+selected_project=$(echo -e "$projects" | peco --prompt "Project> ")
+
+# 将结果存入临时文件
+temp_file=$(mktemp)
+{
+    echo "$selected_project $selected_version"
+    echo -e "$formatted_content"
+} > "$temp_file"
+
+# 使用 gnome-text-editor 打开临时文件
+gnome-text-editor "$temp_file"
+
+# 删除临时文件
+rm "$temp_file"
+

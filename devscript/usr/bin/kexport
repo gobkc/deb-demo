@@ -14,7 +14,7 @@ kubectl logs "$POD" --namespace "$NAMESPACE" > "$EXPORT_FILE"
 SELECT=$(echo -e "1.gedit log\n2.tail -f log\n3.quit"|peco --prompt "[${EXPORT_FILE}]maybe you want to do:")
 case $SELECT in
     "1.gedit log")
-        gedit "$EXPORT_FILE"
+        gnome-text-editor "$EXPORT_FILE"
         exit 0
         ;;
     "2.tail -f log")
