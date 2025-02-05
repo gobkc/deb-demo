@@ -11,14 +11,14 @@ else
 fi
 
 # 提取版本列表
-versions=$(grep -E '^### v[0-9]+\.[0-9]+\.[0-9]+' "$changelog_file" | awk '{print $2}')
+versions=$(grep -E '^### [0-9a-zA-Z]+\.[0-9]+\.[0-9]+' "$changelog_file" | awk '{print $2}')
 
 # 提示用户选择版本
 echo "请选择要提取的版本："
 selected_version=$(echo "$versions" | peco --prompt "Version> " --initial-index=0)
 
 # 提取选中版本下的内容，处理到下一个版本号或文件结尾
-version_content=$(sed -n "/^### $selected_version$/,/^### v[0-9]\+\.[0-9]\+\.[0-9]\+$/p" "$changelog_file" | sed '1d;$d')
+version_content=$(sed -n "/^### $selected_version$/,/^### [0-9a-zA-Z]\+\.[0-9]\+\.[0-9]\+$/p" "$changelog_file" | sed '1d;$d')
 
 # 如果到文件末尾没有匹配到下一个版本号
 if [ -z "$version_content" ]; then
@@ -37,20 +37,25 @@ done
 # 定义项目列表
 projects="configurator-be\nconfigurator-be-v2\nprofile-be\nelevate-be"
 
+# 检查是否安装了xclip
+if ! command -v xclip > /dev/null 2>&1; then
+    echo "xclip 未安装，正在安装..."
+
+    # 更新apt包索引并安装xclip
+    sudo apt update
+    sudo apt install -y xclip
+
+    echo "xclip 安装完成！"
+else
+    echo "xclip 已经安装。"
+fi
+
 # 提示用户选择项目
 echo "请选择项目："
 selected_project=$(echo -e "$projects" | peco --prompt "Project> ")
-
-# 将结果存入临时文件
-temp_file=$(mktemp)
-{
-    echo "$selected_project $selected_version"
-    echo -e "$formatted_content"
-} > "$temp_file"
-
-# 使用 gnome-text-editor 打开临时文件
-gnome-text-editor "$temp_file"
-
-# 删除临时文件
-rm "$temp_file"
+echo "$selected_project"
+echo -e "该tag的报告如下：\n"
+echo -e "$selected_project $selected_version \n$formatted_content"
+echo -e "\n以上内容已放入剪贴板，请按下ctrl + v粘贴内容"
+echo -e "$selected_project $selected_version \n$formatted_content"|xclip -selection clipboard
 
