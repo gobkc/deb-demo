@@ -49,7 +49,7 @@ case $SELECT in
         gsettings set org.gnome.system.proxy.ftp port 8889
         gsettings set org.gnome.system.proxy.socks host '127.0.0.1'
         gsettings set org.gnome.system.proxy.socks port 1089
-        gsettings set org.gnome.system.proxy ignore-hosts "['localhost', '127.0.0.0/8', '::1', 'sso-dev', 'gobk.cn', 'deepseek.com'"
+        gsettings set org.gnome.system.proxy ignore-hosts "['localhost', '127.0.0.0/8', '::1', 'sso-dev', 'gobk.cn', 'deepseek.com', 'baidu.com']"
 #        systemctl restart systemd-networkd
         git config --global http.proxy http://127.0.0.1:8889
         git config --global https.proxy http://127.0.0.1:8889
