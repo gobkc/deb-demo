@@ -10,7 +10,7 @@ check_and_install() {
     fi
 }
 
-SELECT=$(echo -e "1.open minikube\n2.open configurator\n3.open v2ray\n4.clear proxy\n5.quit"|peco --prompt "[open services]maybe you want to do:")
+SELECT=$(echo -e "1.open minikube\n2.open configurator\n3.open v2ray\n4.clear proxy\n5.check openapi-generator\n6.quit"|peco --prompt "[open services]maybe you want to do:")
 case $SELECT in
     "1.open minikube")
         minikube stop
@@ -72,7 +72,16 @@ case $SELECT in
         git config --global --unset https.proxy
         exit 0
         ;;
-    "5.quit")
+    "5.check openapi-generator")
+        echo "export OPENAPI_GENERATOR_VERSION=7.14.0" > "$HOME/.openapi-generator.env"
+        if ! grep -q 'source "$HOME/.openapi-generator.env"' "$HOME/.bashrc"; then
+            echo 'source "$HOME/.openapi-generator.env"' >> "$HOME/.bashrc"
+            source ~/.openapi-generator.env >> ~/.bashrc
+        fi
+        openapi-generator-cli version
+        exit 0
+        ;;
+    "6.quit")
         echo "Exiting..."
         exit 0
         ;;
