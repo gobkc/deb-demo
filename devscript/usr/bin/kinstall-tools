@@ -79,10 +79,10 @@ case $SELECT in
         ;;
     "3.envs setting")
         echo "Setting..."
-        if [ -f "$HOME/.bash_aliases" ]; then
-            echo "$HOME/.bash_aliases already exists. No action needed."
+        if [ -f "/etc/profile.d/bash_aliases.sh" ]; then
+            echo "/etc/profile.d/bash_aliases.sh already exists. No action needed."
         else
-            echo -e "alias k=kubectl\nalias gedit=gnome-text-editor\n" > "$HOME/.bash_aliases"
+            echo -e "alias k=kubectl\nalias gedit=gnome-text-editor\nPATH=/opt/zed/bin/:$PATH" | sudo tee /etc/profile.d/bash_aliases.sh > /dev/null
         fi
         exit 0
         ;;
