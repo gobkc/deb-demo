@@ -14,7 +14,7 @@ SELECT=$(echo -e "1.open minikube\n2.open configurator\n3.open v2ray\n4.clear pr
 case $SELECT in
     "1.open minikube")
         minikube stop
-        minikube start --extra-config=apiserver.service-node-port-range=4000-40000
+        minikube start --docker-env HTTP_PROXY=http://host.minikube.internal:8889/ --docker-env HTTPS_PROXY=http://host.minikube.internal:8889/ --docker-env NO_PROXY=localhost,127.0.0.0/8,::1,sso-dev,cfg-envs,10.96.0.0/12 --extra-config=apiserver.service-node-port-range=4000-40000
         exit 0
         ;;
     "2.open configurator")
