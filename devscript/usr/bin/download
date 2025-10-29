@@ -1,0 +1,21 @@
+#!/bin/sh
+# 自动检测 aria2c 是否安装，没有则自动安装，然后执行多线程下载
+
+# 检查 aria2c 是否存在
+if ! command -v aria2c >/dev/null 2>&1; then
+    echo "⚙️  aria2c 未安装，正在安装..."
+    apt update -y && apt install -y aria2
+    if [ $? -ne 0 ]; then
+        echo "❌ 安装 aria2 失败，请检查网络或源配置。"
+        exit 1
+    fi
+fi
+
+# 检查是否提供下载链接
+if [ -z "$1" ]; then
+    echo "用法: download <URL>"
+    exit 1
+fi
+
+# 执行下载
+aria2c -x 16 -s 16 "$1"
