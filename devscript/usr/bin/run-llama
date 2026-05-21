@@ -1,0 +1,244 @@
+#!/bin/bash
+
+# 获取脚本执行时的当前工作目录（不是脚本所在目录）
+CURRENT_DIR=$(pwd)
+
+# 颜色定义
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+# 打印彩色信息
+print_info() {
+    echo -e "${GREEN}[INFO]${NC} $1"
+}
+
+print_warn() {
+    echo -e "${YELLOW}[WARN]${NC} $1"
+}
+
+print_error() {
+    echo -e "${RED}[ERROR]${NC} $1"
+}
+
+print_prompt() {
+    echo -e "${BLUE}[?]${NC} $1"
+}
+
+# 检查 peco 是否安装
+if ! command -v peco &> /dev/null; then
+    print_error "peco 未安装，请先安装 peco"
+    echo "Ubuntu/Debian: sudo apt install peco"
+    echo "macOS: brew install peco"
+    echo "其他系统: https://github.com/peco/peco"
+    exit 1
+fi
+
+# 检查 gguf 文件是否存在
+check_gguf_files() {
+    # 使用数组存储文件列表，避免重定向语法错误
+    local gguf_files=()
+    while IFS= read -r -d '' file; do
+        gguf_files+=("$file")
+    done < <(find "$CURRENT_DIR" -maxdepth 1 -name "*.gguf" -type f -print0 2>/dev/null)
+    
+    if [ ${#gguf_files[@]} -eq 0 ]; then
+        print_error "当前目录 '$CURRENT_DIR' 中没有找到 .gguf 文件"
+        exit 1
+    fi
+}
+
+# 选择 GGUF 文件
+select_gguf_file() {
+    print_info "正在扫描当前目录下的 .gguf 文件..."
+    
+    local selected_file=$(find "$CURRENT_DIR" -maxdepth 1 -name "*.gguf" -type f 2>/dev/null | \
+        sed 's|^\./||' | \
+        peco --prompt "请选择 GGUF 模型文件 > ")
+    
+    if [ -z "$selected_file" ]; then
+        print_error "未选择任何文件，退出"
+        exit 1
+    fi
+    
+    # 如果是相对路径，转换为完整路径
+    if [[ "$selected_file" != /* ]]; then
+        selected_file="$CURRENT_DIR/$selected_file"
+    fi
+    
+    echo "$selected_file"
+}
+
+# 询问是否开启思考功能
+ask_reasoning() {
+    print_prompt "是否开启深度思考功能？(y/n) [默认: n]: "
+    read -r enable_reasoning
+    
+    if [[ "$enable_reasoning" =~ ^[Yy]$ ]]; then
+        local budget=1024
+        print_prompt "请输入思考预算 (token 数量，0=无限制，-1=默认，按回车使用 1024): "
+        read -r input_budget
+        
+        if [[ -n "$input_budget" ]]; then
+            # 验证输入是否为数字
+            if [[ "$input_budget" =~ ^-?[0-9]+$ ]]; then
+                budget=$input_budget
+            else
+                print_warn "输入无效，使用默认值 1024"
+            fi
+        fi
+        echo "$budget"
+    else
+        echo "disabled"
+    fi
+}
+
+# 询问端口号
+ask_port() {
+    local default_port=8080
+    print_prompt "请输入服务端口号 [默认: $default_port]: "
+    read -r input_port
+    
+    if [[ -n "$input_port" ]]; then
+        # 验证端口号是否有效
+        if [[ "$input_port" =~ ^[0-9]+$ ]] && [ "$input_port" -ge 1024 ] && [ "$input_port" -le 65535 ]; then
+            echo "$input_port"
+        else
+            print_warn "端口号无效（需为 1024-65535 的数字），使用默认端口 $default_port"
+            echo "$default_port"
+        fi
+    else
+        echo "$default_port"
+    fi
+}
+
+# 询问 GPU 层数
+ask_gpu_layers() {
+    local default_layers=200
+    print_prompt "请输入 GPU 加速层数 [默认: $default_layers] (输入 0 表示不使用 GPU): "
+    read -r input_layers
+    
+    if [[ -n "$input_layers" ]]; then
+        if [[ "$input_layers" =~ ^[0-9]+$ ]]; then
+            # 限制最大层数，避免过高
+            if [ "$input_layers" -gt 500 ]; then
+                print_warn "层数过高，限制为 500"
+                echo "500"
+            else
+                echo "$input_layers"
+            fi
+        else
+            print_warn "输入无效，使用默认值 $default_layers"
+            echo "$default_layers"
+        fi
+    else
+        echo "$default_layers"
+    fi
+}
+
+# 构建命令字符串
+build_command() {
+    local model_file=$1
+    local reasoning_budget=$2
+    local port=$3
+    local gpu_layers=$4
+    
+    if [ "$reasoning_budget" = "disabled" ]; then
+        reasoning_param=""
+    else
+        reasoning_param="--reasoning-budget $reasoning_budget"
+    fi
+    
+    echo "llama-server -m \"$model_file\" -ngl $gpu_layers $reasoning_param --port $port"
+}
+
+# 确认并显示最终命令
+confirm_and_run() {
+    local model_file=$1
+    local reasoning_budget=$2
+    local port=$3
+    local gpu_layers=$4
+    
+    # 构建命令
+    local cmd=$(build_command "$model_file" "$reasoning_budget" "$port" "$gpu_layers")
+    
+    echo ""
+    print_info "========== 配置确认 =========="
+    echo -e "${BLUE}模型文件:${NC} $model_file"
+    echo -e "${BLUE}GPU 层数:${NC} $gpu_layers"
+    
+    if [ "$reasoning_budget" = "disabled" ]; then
+        echo -e "${BLUE}深度思考:${NC} 禁用"
+    else
+        echo -e "${BLUE}深度思考:${NC} 启用 (预算: $reasoning_budget tokens)"
+    fi
+    
+    echo -e "${BLUE}服务端口:${NC} $port"
+    echo "================================"
+    echo ""
+    
+    print_info "即将执行的命令:"
+    echo -e "${YELLOW}$cmd${NC}"
+    echo ""
+    
+    print_prompt "是否启动服务？(y/n) [默认: y]: "
+    read -r confirm
+    
+    if [[ -z "$confirm" ]] || [[ "$confirm" =~ ^[Yy]$ ]]; then
+        print_info "服务启动中... (按 Ctrl+C 停止服务)"
+        echo ""
+        
+        # 记录开始时间
+        local start_time=$(date +%s)
+        
+        # 执行命令
+        eval "$cmd"
+        
+        # 当命令结束时（比如被 Ctrl+C 中断），打印结束信息
+        local end_time=$(date +%s)
+        local duration=$((end_time - start_time))
+        echo ""
+        print_info "服务已停止，运行时长: ${duration} 秒"
+    else
+        print_info "已取消启动"
+        exit 0
+    fi
+}
+
+# 主函数
+main() {
+    print_info "LLaMA.cpp 服务器启动脚本"
+    print_info "当前工作目录: $CURRENT_DIR"
+    echo ""
+    
+    # 检查 gguf 文件
+    check_gguf_files
+    
+    # 选择模型文件
+    MODEL_FILE=$(select_gguf_file)
+    print_info "已选择模型: $(basename "$MODEL_FILE")"
+    echo ""
+    
+    # 询问 GPU 层数
+    GPU_LAYERS=$(ask_gpu_layers)
+    echo ""
+    
+    # 询问思考功能
+    REASONING_BUDGET=$(ask_reasoning)
+    echo ""
+    
+    # 询问端口
+    PORT=$(ask_port)
+    echo ""
+    
+    # 确认并运行
+    confirm_and_run "$MODEL_FILE" "$REASONING_BUDGET" "$PORT" "$GPU_LAYERS"
+}
+
+# 捕获 Ctrl+C 信号
+trap 'echo ""; print_warn "接收到中断信号，服务正在停止..."; exit 0' INT
+
+# 运行主函数
+main
