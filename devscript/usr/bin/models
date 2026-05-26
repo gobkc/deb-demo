@@ -9,14 +9,17 @@ case $MODEL_SOURCE in
         mapfile -t model_files < <(find "$DEFAULT_MODEL_DIR" -maxdepth 1 -type f -name "*.gguf" 2>/dev/null | sort)
         if [ ${#model_files[@]} -eq 0 ]; then
             echo "No .gguf files found in current directory. Please enter full path manually."
-            read -p "Model file path: " MODEL_PATH
+            read -p "Model file path: " MODEL_FILE
         else
-            MODEL_PATH=$(printf "%s\n" "${model_files[@]}" | peco --prompt "Select a model file: ")
-            if [ -z "$MODEL_PATH" ]; then
+            MODEL_FILE=$(printf "%s\n" "${model_files[@]}" | peco --prompt "Select a model file: ")
+            if [ -z "$MODEL_FILE" ]; then
                 echo "No model selected. Exiting."
                 exit 1
             fi
         fi
+        # 单文件模式：不使用 MODEL_DIR 和 MODELS_DIR_ARG
+        MODEL_DIR=""
+        MODELS_DIR_ARG=""
         ;;
     "Directory containing models")
         CURRENT_DIR=$(pwd)
@@ -28,15 +31,17 @@ case $MODEL_SOURCE in
         choices="$choices\nManual input path"
         selected=$(echo -e "$choices" | peco --prompt "Select a directory (or manual input): ")
         if [ "$selected" = "Manual input path" ]; then
-            read -p "Enter directory path: " MODEL_PATH
-            MODEL_PATH=$(realpath "$MODEL_PATH" 2>/dev/null || (cd "$MODEL_PATH" && pwd))
+            read -p "Enter directory path: " MODEL_DIR
+            MODEL_DIR=$(realpath "$MODEL_DIR" 2>/dev/null || (cd "$MODEL_DIR" && pwd))
         else
-            MODEL_PATH="$selected"
+            MODEL_DIR="$selected"
         fi
-        if [ -z "$MODEL_PATH" ] || [ ! -d "$MODEL_PATH" ]; then
+        if [ -z "$MODEL_DIR" ] || [ ! -d "$MODEL_DIR" ]; then
             echo "Invalid directory. Exiting."
             exit 1
         fi
+        # 目录模式：设置 --models-dir 参数，不使用 -m 指定默认模型
+        MODELS_DIR_ARG="--models-dir \"$MODEL_DIR\""
         ;;
     *)
         echo "Invalid selection"
@@ -51,11 +56,11 @@ read -p "Enter web server port [default 8080]: " PORT
 PORT=${PORT:-8080}
 
 echo "--- Optional Performance Parameters ---"
-read -p "Enable Flash Attention (-fa)? (y/n) [default y]: " fa_choice
+read -p "Enable Flash Attention (-fa on)? (y/n) [default y]: " fa_choice
 if [[ "$fa_choice" =~ ^[Nn]$ ]]; then
     FA=""
 else
-    FA="-fa"
+    FA="-fa on"
 fi
 
 read -p "Batch size for prompt processing (-b) [default 2048]: " BATCH
@@ -64,8 +69,8 @@ BATCH=${BATCH:-2048}
 read -p "Micro batch size (-ub) [default 1024]: " UBATCH
 UBATCH=${UBATCH:-1024}
 
-read -p "Number of threads for generation (-t) [default 1]: " THREADS
-THREADS=${THREADS:-4}
+read -p "Number of threads for generation (-1) [default 2]: " THREADS
+THREADS=${THREADS:-2}
 
 read -p "Number of threads for batch processing (-tb) [default 16]: " THREADS_BATCH
 THREADS_BATCH=${THREADS_BATCH:-16}
@@ -73,17 +78,24 @@ THREADS_BATCH=${THREADS_BATCH:-16}
 read -p "Number of parallel requests (-np) [default 4]: " PARALLEL
 PARALLEL=${PARALLEL:-4}
 
-read -p "Enable NUMA optimizations (--numa)? (y/n) [default y]: " numa_choice
+read -p "Enable NUMA optimizations (--numa distribute)? (y/n) [default y]: " numa_choice
 if [[ "$numa_choice" =~ ^[Nn]$ ]]; then
     NUMA=""
 else
-    NUMA="--numa"
+    NUMA="--numa distribute"
 fi
 
 read -p "Temperature (--temp) [default 0.7]: " TEMP
 TEMP=${TEMP:-0.7}
 
-CMD="llama-server -m \"$MODEL_PATH\" -ngl $NGL --port $PORT $FA -b $BATCH -ub $UBATCH -t $THREADS -tb $THREADS_BATCH -np $PARALLEL $NUMA --temp $TEMP"
+# 构建命令
+if [ -n "$MODELS_DIR_ARG" ]; then
+    # 目录模式：使用 --models-dir，不指定具体模型
+    CMD="llama-server $MODELS_DIR_ARG -ngl $NGL --port $PORT $FA -b $BATCH -ub $UBATCH -t $THREADS -tb $THREADS_BATCH -np $PARALLEL $NUMA --temp $TEMP -ctk q8_0 -ctv q8_0"
+else
+    # 单文件模式
+    CMD="llama-server -m \"$MODEL_FILE\" -ngl $NGL --port $PORT $FA -b $BATCH -ub $UBATCH -t $THREADS -tb $THREADS_BATCH -np $PARALLEL $NUMA --temp $TEMP -ctk q8_0 -ctv q8_0"
+fi
 
 echo -e "\033[0;32mCommand to execute:\033[0m $CMD"
 echo "Starting server..."
