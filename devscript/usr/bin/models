@@ -64,7 +64,7 @@ BATCH=${BATCH:-2048}
 read -p "Micro batch size (-ub) [default 1024]: " UBATCH
 UBATCH=${UBATCH:-1024}
 
-read -p "Number of threads for generation (-t) [default 4]: " THREADS
+read -p "Number of threads for generation (-t) [default 1]: " THREADS
 THREADS=${THREADS:-4}
 
 read -p "Number of threads for batch processing (-tb) [default 16]: " THREADS_BATCH
