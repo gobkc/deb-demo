@@ -10,19 +10,26 @@ else
     exit 1
 fi
 
-# 提取版本列表
-versions=$(grep -E '^### [0-9a-zA-Z]+\.[0-9]+\.[0-9]+\-[a-z]+' "$changelog_file" | awk '{print $2}')
+# 提取版本列表（版本号后可带说明，如 v4.0.3-tawteen-mixedmanual 或 v4.0.3）
+versions=$(grep -E '^###\s+[0-9a-zA-Z]+\.[0-9]+\.[0-9]+' "$changelog_file" | awk '{print $2}')
 
 # 提示用户选择版本
 echo "请选择要提取的版本："
 selected_version=$(echo "$versions" | peco --prompt "Version> " --initial-index=0)
 
-# 提取选中版本下的内容，仅到下一个版本块
-version_content=$(awk -v ver="### $selected_version" '
-    $0 == ver {found=1; next}
+# 提取版本行（可能带 db 描述）与版本块内容，仅到下一个版本块（只比对版本号字段，兼容版本行上的附加描述）
+version_header=$(awk -v ver="$selected_version" '
+    $1 == "###" && $2 == ver {print; exit}
+' "$changelog_file")
+
+version_content=$(awk -v ver="$selected_version" '
+    $1 == "###" && $2 == ver {found=1; next}
     /^### / && found {exit}
     found {print}
 ' "$changelog_file")
+
+# 提取 db 描述，如 db:70
+db_tag=$(printf '%s\n%s\n' "$version_header" "$version_content" | grep -oE 'db:[[:space:]]*[0-9]+' | head -n 1 | tr -d '[:space:]')
 
 # 仅提取以 `-` 开头的行
 mapfile -t items <<< "$(echo "$version_content" | grep -E '^\s*-\s+')"
@@ -53,7 +60,14 @@ fi
 echo "请选择项目："
 selected_project=$(echo -e "$projects" | peco --prompt "Project> ")
 echo "$selected_project"
+
+# 组装标题（版本号后单独一行显示 db 描述）
+title="$selected_project $selected_version"
+if [ -n "$db_tag" ]; then
+    title+="\n$db_tag"
+fi
+
 echo -e "该tag的报告如下：\n"
-echo -e "$selected_project $selected_version \n$formatted_content"
+echo -e "$title\n$formatted_content"
 echo -e "\n以上内容已放入剪贴板，请按下ctrl + v粘贴内容"
-echo -e "$selected_project $selected_version \n$formatted_content"|xclip -selection clipboard
+echo -e "$title\n$formatted_content"|xclip -selection clipboard
